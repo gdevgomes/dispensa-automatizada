@@ -1,4 +1,6 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
+import * as TaskManager from 'expo-task-manager';
 import { Platform } from 'react-native';
 
 import { Palette } from '@/constants/theme';
@@ -19,6 +21,9 @@ const MIN_DELAY_MS = 60 * 60 * 1000;
  * e inatividade em 15s. Sem a variável, vale o agendamento real. O valor é embutido no build.
  */
 const TEST_REMINDERS = process.env.EXPO_PUBLIC_TEST_REMINDERS === 'true';
+
+const BACKGROUND_TASK = 'consumption-reminder-response';
+const HANDLED_RESPONSE_KEY = 'last-handled-reminder-response';
 
 const INACTIVITY_ID = 'inactivity-reminder';
 const INACTIVITY_DAYS = 15;
@@ -108,21 +113,50 @@ export async function cancelReminderForItem(itemId: string) {
   );
 }
 
+type Listener = () => void;
+const changeListeners = new Set<Listener>();
+
+/** Avisa quando uma resposta de notificação alterou a dispensa (para telas abertas recarregarem). */
+export function onPantryChangedByReminder(listener: Listener) {
+  changeListeners.add(listener);
+  return () => {
+    changeListeners.delete(listener);
+  };
+}
+
 /**
  * Trata a resposta do usuário a um lembrete.
  * Retorna true quando o app deve abrir a lista (toque na notificação em si).
+ * A última resposta tratada fica salva, então a mesma resposta nunca é aplicada duas vezes
+ * (nem entre a tarefa em segundo plano e o hook, nem entre aberturas do app).
  */
 export async function handleReminderResponse(response: Notifications.NotificationResponse): Promise<boolean> {
   const itemId = response.notification.request.content.data?.itemId;
   if (typeof itemId !== 'string') return false;
 
+  const key = `${response.notification.request.identifier}:${response.actionIdentifier}`;
+  if ((await AsyncStorage.getItem(HANDLED_RESPONSE_KEY)) === key) return false;
+  await AsyncStorage.setItem(HANDLED_RESPONSE_KEY, key);
+
   if (response.actionIdentifier === ACTION_CONSUMED) {
     await setItemExists(itemId, false);
+    changeListeners.forEach((listener) => listener());
     return false;
   }
   if (response.actionIdentifier === ACTION_STILL_HAVE) return false;
   return response.actionIdentifier === Notifications.DEFAULT_ACTION_IDENTIFIER;
 }
+
+// Android: executa os botões (opensAppToForeground: false) mesmo com o app em segundo plano ou fechado.
+// Precisa ficar no escopo do módulo, que é carregado cedo pelo _layout.
+TaskManager.defineTask<Notifications.NotificationTaskPayload>(BACKGROUND_TASK, async ({ data }) => {
+  if (data && 'actionIdentifier' in data) {
+    await handleReminderResponse(data).catch(() => {});
+  }
+  return Notifications.BackgroundNotificationTaskResult.NoData;
+});
+
+Notifications.registerTaskAsync(BACKGROUND_TASK).catch(() => {});
 
 /** Cancela o lembrete de inatividade (chamar quando o app está aberto/em uso). */
 export async function cancelInactivityReminder() {

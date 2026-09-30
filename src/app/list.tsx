@@ -1,12 +1,12 @@
 import { useFocusEffect } from 'expo-router';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useToast } from '@/components/toast';
 import { BottomTabInset, Colors, Palette } from '@/constants/theme';
 import { expiryDateLine, expiryInfo, formatMonthYear } from '@/lib/expiry';
-import { cancelReminderForItem, scheduleConsumptionReminders } from '@/lib/notifications';
+import { cancelReminderForItem, onPantryChangedByReminder, scheduleConsumptionReminders } from '@/lib/notifications';
 import { getListItems, setItemExists, type ListItem } from '@/lib/shopping-list-storage';
 
 type Filter = 'exists' | 'missing';
@@ -21,6 +21,8 @@ export default function ListScreen() {
   const load = useCallback(async () => {
     setItems(await getListItems());
   }, []);
+
+  useEffect(() => onPantryChangedByReminder(() => void load()), [load]);
 
   useFocusEffect(
     useCallback(() => {
