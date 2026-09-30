@@ -5,13 +5,29 @@
 
 import { Platform } from 'react-native';
 
+/** Paleta inspirada no tema padrão do MUI (Material UI). */
+export const Palette = {
+  primary: '#1976d2',
+  primaryDark: '#1565c0',
+  primaryLight: '#e3f2fd',
+  success: '#2e7d32',
+  successLight: '#e8f5e9',
+  successBorder: 'rgba(46, 125, 50, 0.3)',
+  warning: '#ed6c02',
+  warningLight: '#fff3e0',
+  error: '#d32f2f',
+  errorLight: '#fdecea',
+  divider: 'rgba(0, 0, 0, 0.12)',
+  onPrimary: '#ffffff',
+} as const;
+
 export const Colors = {
   light: {
-    text: '#000000',
+    text: 'rgba(0, 0, 0, 0.87)',
     background: '#ffffff',
-    backgroundElement: '#F0F0F3',
-    backgroundSelected: '#E0E1E6',
-    textSecondary: '#60646C',
+    backgroundElement: '#f5f5f5',
+    backgroundSelected: '#e0e0e0',
+    textSecondary: 'rgba(0, 0, 0, 0.6)',
   },
   dark: {
     text: '#ffffff',
