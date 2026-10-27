@@ -134,6 +134,10 @@ export async function handleReminderResponse(response: Notifications.Notificatio
   const itemId = response.notification.request.content.data?.itemId;
   if (typeof itemId !== 'string') return false;
 
+  if (response.actionIdentifier !== Notifications.DEFAULT_ACTION_IDENTIFIER) {
+    await Notifications.dismissNotificationAsync(response.notification.request.identifier).catch(() => {});
+  }
+
   const key = `${response.notification.request.identifier}:${response.actionIdentifier}`;
   if ((await AsyncStorage.getItem(HANDLED_RESPONSE_KEY)) === key) return false;
   await AsyncStorage.setItem(HANDLED_RESPONSE_KEY, key);
